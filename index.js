@@ -1,7 +1,7 @@
 const express = require("express");
 const courses = require("./courses.json");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-require('dotenv').config()
+require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -15,13 +15,9 @@ app.use(cors());
 app.use(express.json());
 
 // Connect with MongoDB
-const uri =
-  `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.49jhv2u.mongodb.net/?retryWrites=true&w=majority`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.49jhv2u.mongodb.net/?retryWrites=true&w=majority`;
 
-  // const uri = "mongodb+srv://learnCode:usqDpQKYaSv6faXI@cluster0.49jhv2u.mongodb.net/?retryWrites=true&w=majority";
-
-
-
+// const uri = "mongodb+srv://learnCode:usqDpQKYaSv6faXI@cluster0.49jhv2u.mongodb.net/?retryWrites=true&w=majority";
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -38,65 +34,94 @@ async function run() {
     await client.connect();
 
     const courseCollection = client.db("coursesDB").collection("courses");
+    const usersCollection = client.db("coursesDB").collection("users");
 
-    app.post('/courses', async(req, res)=>{
-        const course = req.body;
-        // console.log('new course', course);
-        const result = await courseCollection.insertOne(course)
-        res.send(result)
-    })
+    app.post("/courses", async (req, res) => {
+      const course = req.body;
+      // console.log('new course', course);
+      const result = await courseCollection.insertOne(course);
+      res.send(result);
+    });
 
-    app.get('/courses', async(req, res)=>{
-        const cursor = courseCollection.find()
-        const result = await cursor.toArray()
-        res.send(result)
-    })
- 
+    app.get("/courses", async (req, res) => {
+      const cursor = courseCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     // Read API with ID
-    app.get('/courses/:id', async(req, res)=>{
+    app.get("/courses/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
-      const user = await courseCollection.findOne(query)
-      res.send(user)
+      const query = { _id: new ObjectId(id) };
+      const user = await courseCollection.findOne(query);
+      res.send(user);
+    });
 
-   })
-
-    app.put('/courses/:id', async(req, res)=>{
+    app.put("/courses/:id", async (req, res) => {
       const id = req.params.id;
       const course = req.body;
       // console.log(id, course);
-      const filter = {_id: new ObjectId(id)}
-      const options = {upsert: true}
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
       const updatedCourseBody = {
-        $set:{
-          course_name: course.course_name, 
-          image: course.image, 
-          expert_name: course.expert_name, 
-          card_bg_color: course.card_bg_color
-        }
-      }
-      const result = await courseCollection.findOne(filter,updatedCourseBody , options )
+        $set: {
+          course_name: course.course_name,
+          image: course.image,
+          expert_name: course.expert_name,
+          card_bg_color: course.card_bg_color,
+        },
+      };
+      const result = await courseCollection.updateOne(
+        filter,
+        updatedCourseBody,
+        options
+      );
       console.log(result);
+      res.send(result);
+    });
+
+    app.delete("/courses/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log("Pelese deleted id from database", id);
+      const query = { _id: new ObjectId(id) };
+      const result = await courseCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // User Related API=================================
+
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      console.log(user);
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+
+    app.get("/users", async (req, res) => {
+      const cursor = usersCollection.find();
+      const users = await cursor.toArray();
+      res.send(users);
+    });
+
+    app.delete("/users/:id", async(req, res)=>{
+      const id = req.params.id;
+      const query={_id: new ObjectId(id)}
+      const result = await usersCollection.deleteOne(query)
       res.send(result)
     })
 
-
-    
-
-    
-
-
-    app.delete('/courses/:id', async(req, res)=>{
-        const id = req.params.id;
-        console.log('Pelese deleted id from database', id);
-        const query = {_id: new ObjectId(id)}
-        const result = await courseCollection.deleteOne(query)
-        res.send(result)
+    app.patch('/users', async(req, res)=>{
+       const user = req.body;
+       const filter = {email: user.email}
+       const updateDoc = {
+         $set:{
+          lastLoggedAt: user.lastLoggedAt,
+          
+         }
+       }
+       const result = await usersCollection.updateOne(filter, updateDoc)
+       res.send(result)
     })
-
-
-
-
 
 
     // Send a ping to confirm a successful connection
@@ -111,11 +136,8 @@ async function run() {
 }
 run().catch(console.dir);
 
-
-
 app.get("/", (req, res) => {
-    res.send("Hello World My First API with Server");
-  });
-
+  res.send("Hello World My First API with Server");
+});
 
 app.listen(port);
